@@ -10,6 +10,8 @@ import MapKit
 
 class ViewController: UIViewController {
     
+    var locationManager: CLLocationManager?
+    
     lazy var mapView: MKMapView = {
         
         let map = MKMapView()
@@ -36,6 +38,15 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
        
+        // initialize locationManager
+        locationManager = CLLocationManager()
+        locationManager?.delegate = self
+        
+        locationManager?.requestWhenInUseAuthorization() // Privacy - Location When In Use Usage Description
+        locationManager?.requestAlwaysAuthorization() // different key for this - Privacy - Location Always and When In Use Usage Description
+        
+        locationManager?.requestLocation()
+       
         setupUI()
     }
     
@@ -59,7 +70,43 @@ class ViewController: UIViewController {
         searchTextField.returnKeyType = .go
     }
     
+    
+    
+    // this function is to zoom in the location based on a authorization stratus
+    private func checkLocationAuthorization() {
+        guard let locationManager = locationManager,
+              let location = locationManager.location else{
+                  return
+              }
+        
+        switch locationManager.authorizationStatus {
+        case .authorizedWhenInUse, .authorizedAlways:
+            let region = MKCoordinateRegion(center: location.coordinate, latitudinalMeters: 700, longitudinalMeters: 700)
+            mapView.setRegion(region, animated: true)
+        case .denied:
+            print("Location services has been denied")
+        case .notDetermined, .restricted:
+            print("Location services has been denied and restricted")
+        default:
+            print("unknown reason")
+        }
+    }
 
+}
 
+extension ViewController: CLLocationManagerDelegate {
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        
+    }
+    
+    
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        checkLocationAuthorization()
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        
+    }
 }
 
