@@ -26,6 +26,7 @@ class ViewController: UIViewController {
         let searchTextField = UITextField()
         searchTextField.layer.cornerRadius = 10
         searchTextField.clipsToBounds = true
+        searchTextField.delegate = self   // Added this delegate for search
         searchTextField.backgroundColor = UIColor.systemBackground
         searchTextField.placeholder = "Search"
         searchTextField.translatesAutoresizingMaskIntoConstraints = false
@@ -91,6 +92,52 @@ class ViewController: UIViewController {
             print("unknown reason")
         }
     }
+    
+    
+    private func presentPlacesSheet(places: [PlaceAnnotations]) {
+        
+        guard let locationManager = locationManager,
+              let userLocation = locationManager.location else {
+            return
+        }
+        
+        let placesTVC = PlacesTableViewController(userLocation: userLocation, places: places)
+        placesTVC.modalPresentationStyle = .pageSheet
+        
+        if let sheet = placesTVC.sheetPresentationController {
+            sheet.prefersGrabberVisible = true  // the grabber will be displayed at the top of the sheet when it is presented
+            sheet.detents = [.medium(), .large()] // you're specifying that the modal sheet can be presented in two different sizes: medium and large.
+            present(placesTVC, animated: true)
+        }
+        
+    }
+    
+    private func findNearbyPlaces(by query: String) {
+        
+        // clear all annotation before
+    
+        
+        let request = MKLocalSearch.Request() // request local search
+        request.naturalLanguageQuery = query
+        request.region = mapView.region
+        
+        let search = MKLocalSearch(request: request)
+        search.start { [weak self] response, error in
+            guard let response = response,
+                  error == nil else {
+                return
+            }
+            
+            let places = response.mapItems.map(PlaceAnnotations.init)
+            places.forEach { place in
+                self?.mapView.addAnnotation(place)
+            }
+            
+            self?.presentPlacesSheet(places: places)
+            print(response.mapItems)
+        }
+        
+    }
 
 }
 
@@ -108,5 +155,20 @@ extension ViewController: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         
     }
+}
+
+extension ViewController: UITextFieldDelegate {
+    
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        
+        let text = textField.text ?? ""
+        if !text.isEmpty {
+            textField.resignFirstResponder()
+            // find nearby places
+            findNearbyPlaces(by: text)
+        }
+        return true
+    }
+    
 }
 
